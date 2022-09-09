@@ -1,0 +1,2 @@
+VM_ADDRESS = '0.0.0.0'
+VM_PORT = 4242
