@@ -1,4 +1,4 @@
 #!/bin/bash
 
 xargs brew install < brew_requirements.txt
-pip3 install -r requirements.txt
+poetry install
