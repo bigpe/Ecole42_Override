@@ -1,4 +1,0 @@
-paramiko
-colorama
-jupyter
-p2j
