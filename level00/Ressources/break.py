@@ -33,7 +33,7 @@ print_title('Gotcha! Try this!')
 
 output = exec(
     client,
-    f'echo "\n" | (echo {password}; cat -) | ./{binary_name}',
+    f'echo "\n" | (echo "{password}"; cat -) | ./{binary_name}',
     title='Execute binary again with obtained password'
 )
 print_output(output)
@@ -42,7 +42,7 @@ print_title('Check which user in use at now')
 
 output = exec(
     client,
-    f'echo "whoami" | (echo {password}; cat -) | ./{binary_name}',
+    f'echo "whoami" | (echo "{password}"; cat -) | ./{binary_name}',
     title='Execute binary again with obtained password'
 )
 user = output[0]
@@ -51,7 +51,7 @@ print_title("Level01 - it's what we need, right?")
 
 output = exec(
     client,
-    f'echo "cat /home/users/{user}/.pass" | (echo {password}; cat -) | ./{binary_name}',
+    f'echo "cat /home/users/{user}/.pass" | (echo "{password}"; cat -) | ./{binary_name}',
     title='Steal password'
 )
 token = output[0]

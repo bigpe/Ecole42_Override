@@ -39,6 +39,7 @@ def exec(client: SSHClient, command: str, title: str = None, err=False, read_met
     if not silent:
         print_action(command)
     stdin, stdout, stderr = client.exec_command(command)
+
     read_from = 'stdout'
     if err:
         read_from = 'stderr'
