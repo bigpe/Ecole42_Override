@@ -1,67 +1,85 @@
+// gcc -m32 ./test.c  -fstack-protector -z execstack
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ptrace.h>
 
-int		auth(char *login, int serial)
-{
-	login[strcspn(login, "\n")] = '\0';
-	int		a = strnlen(login, 32);
-	if (a <= 5)
-		return 1;
-	if (ptrace(PTRACE_TRACEME, 0, (void*)1, NULL) == -1)
-	{
-		puts("\033[32m.---------------------------.");
-		puts("\033[31m| !! TAMPERING DETECTED !!  |");
-		puts("\033[32m'---------------------------'");
-		return 1;
+void clear_stdin() {
+	char byte = 0;
+
+	while (42) {
+		byte = getchar();
+		if (byte == '\n' || byte == -1)
+			break ;
 	}
-	int		b = ((int)login[3] ^ 0x1337) + 0x5eeded;
-	int		c = 0;
-	while (a >= c)
-	{
-		if (login[c] >= 31)
-			return 1;
-
-		{// all variables declared here are registers, they are NOT in stack
-			int	eax, edx, ecx;
-			int	mul_res[2];//tmp variable, it should be stored in edx AND eax
-
-			ecx = login[c] ^ b;
-			(int64_t)*mul_res = ecx * 0x88233b2b;
-			eax = (ecx - mul_res[1]) >> 1;
-			eax += mul_res[1];
-			eax >>= 10;
-			eax *= 1337;
-			edx = ecx - eax;
-			b += edx;
-		}
-		++c;
-	}
-	return b != serial;
 }
 
-int		main(int ac, char **av)
-{
-	char			buf[32];
-	unsigned int	b;
-	char			**a = av;
+int get_unum() {
+	unsigned int nb;
 
-	puts("***********************************");
-	puts("*\t\tlevel06\t\t  *");
-	puts("***********************************");
-	printf("-> Enter Login: ");
-	fgets(buf, 32, stdin);
-	puts("***********************************");
-	puts("***** NEW ACCOUNT DETECTED ********");
-	puts("***********************************");
-	printf("-> Enter Serial: ");
-	scanf("%u", &b);
-	if (auth(buf, b) == 0)
-	{
-		puts("Authenticated!");
-		system("/bin/sh");
-		return 0;
+	fflush(stdout);
+	scanf("%u", &nb);
+	clear_stdin();
+	return (nb);
+}
+
+int store_number(char *buffer) {
+	unsigned int nb = 0;
+	unsigned int index = 0;
+
+	printf(" Number: ");
+	nb = get_unum();
+	printf(" Index: ");
+	index = get_unum();
+	if (index % 3 == 0 || (nb >> 0x18) == 0xb7) {
+		puts(" *** ERROR! ***");
+		puts("   This index is reserved for wil!");
+		puts(" *** ERROR! ***");
+		return (1);
 	}
-	return 1;
+	*(unsigned int *)(buffer + index * 4) = nb;
+	return (0);
+}
+
+int read_number(char *buffer) {
+	unsigned int index;
+
+	printf(" Index: ");
+	index = get_unum();
+	printf(" Number at data[%u] is %u\n", index, *(unsigned int *)(buffer + index * 4));
+	return (0);
+}
+
+int main(int ac, char **av, char **env) {
+
+	char	buffer[0x190];
+	char	buff_cmd[0x14] = {0};
+	int	ret = 0;
+
+	memset(buffer, 0, 0x190);
+	while (*av) {
+		memset(*av, 0, strlen(*av));
+		av++;
+	}
+	while (*env) {
+		memset(*env, 0, strlen(*env));
+		env++;
+	}
+	puts("----------------------------------------------------\n  Welcome to wil's crappy number storage service!   \n----------------------------------------------------\n Commands:                                          \n    store - store a number into the data storage    \n    read  - read a number from the data storage     \n    quit  - exit the program                        \n----------------------------------------------------\n   wil has reserved some storage :>                 \n----------------------------------------------------\n");
+	while (1) {
+		printf("Input command: ");
+		ret = 1;
+		fgets(buff_cmd, 0x14, stdin);
+		buff_cmd[strlen(buff_cmd) - 1] = 0;
+		if (strncmp(buff_cmd, "store", 0x5) == 0)
+			ret = store_number(buffer);
+		else if (strncmp(buff_cmd, "read", 0x4) == 0)
+			ret = read_number(buffer);
+		else if (strncmp(buff_cmd, "quit", 0x4) == 0)
+			break;
+		if (ret == 0)
+			printf(" Completed %s command successfully\n", buff_cmd);
+		else
+			printf(" Failed to do %s command\n", buff_cmd);
+	}
+	return (0);
 }
