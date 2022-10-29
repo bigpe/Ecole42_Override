@@ -4,7 +4,16 @@ p=$(pwd)
 
 i=0
 for f in `find $(find $p -name "level*") -name "Ressources" | sort`; do
-    printf "\nLevel - $i\n\n"
+    cat << EOF
+
+=======================================
+
+  Level $i
+
+=======================================
+
+EOF
+
     cd $f && python3 break.py
     i=$((i+1))
 done
